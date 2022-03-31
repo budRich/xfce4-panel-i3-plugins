@@ -39,7 +39,14 @@ and:
 
 Runtime dependencies: [**i3wm**], [**i3ass**]  
 
+---
 
+*\*: with liberated i meant that i made it so you don't need to build
+all of xfce4-panel to build the plugins. They are also liberated from 
+autotools.*
+
+[xfce4-panel-i3-plugins]: https://aur.archlinux.org/packages/xfce4-panel-i3-plugins
+[AUR]: https://aur.archlinux.org/
 [xfce4-dev-tools]: https://gitlab.xfce.org/xfce/xfce4-dev-tools
 [xfce4-panel]: https://gitlab.xfce.org/xfce/xfce4-panel
 [**i3ass**]: https://github.com/budlabs/i3ass
