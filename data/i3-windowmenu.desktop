@@ -1,0 +1,8 @@
+[Xfce Panel]
+Type=X-XFCE-PanelPlugin
+Name=Window Menu with i3wm support
+Comment=Fork of the internal windowmenu plugin
+Icon=org.xfce.panel.windowmenu
+X-XFCE-Module=i3windowmenu
+X-XFCE-Internal=TRUE
+X-XFCE-API=2.0

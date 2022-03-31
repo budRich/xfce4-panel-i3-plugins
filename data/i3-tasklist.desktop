@@ -1,0 +1,8 @@
+[Xfce Panel]
+Type=X-XFCE-PanelPlugin
+Name=Taskbar with i3wm support
+Comment=Fork of the internal tasklist plugin
+Icon=org.xfce.panel.tasklist
+X-XFCE-Module=i3tasklist
+X-XFCE-Internal=TRUE
+X-XFCE-API=2.0
