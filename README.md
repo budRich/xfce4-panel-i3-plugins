@@ -33,7 +33,7 @@ Otherwise, just clone this repository, install the
 build dependencies: [xfce4-panel], [xfce4-dev-tools]
 and:
 
-  1. Configure [[config.mak]] if needed
+  1. Configure [config.mak] if needed
   2. `$ make`
   3. `# make install`
 
