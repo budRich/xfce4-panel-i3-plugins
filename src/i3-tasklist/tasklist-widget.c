@@ -3364,21 +3364,22 @@ xfce_tasklist_button_activate (XfceTasklistChild *child,
                                guint32            timestamp)
 {
   gchar         *command = NULL;
-  GError        *error = NULL;
+  // GError        *error = NULL;
 
   panel_return_if_fail (XFCE_IS_TASKLIST (child->tasklist));
   panel_return_if_fail (WNCK_IS_WINDOW (child->window));
   panel_return_if_fail (WNCK_IS_SCREEN (child->tasklist->screen));
 
+
   /* go to workspace and activate window */
-  command = g_strdup_printf ("i3run -d %ld", wnck_window_get_xid (child->window));
+  command = g_strdup_printf ("i3run -d %ld --silent --summon", wnck_window_get_xid (child->window));
   if (!xfce_spawn_command_line (gtk_widget_get_screen (GTK_WIDGET (child)),
+  // if (!xfce_spawn_command_line (child->tasklist->screen,
                                 command, FALSE,
-                                FALSE, TRUE, &error))
+                                FALSE, TRUE, NULL))
     {
-      xfce_dialog_show_error (NULL, error,
-                              _("Failed to execute i3run command"));
-      g_error_free (error);
+      xfce_dialog_show_error (NULL, NULL, command);
+      // g_error_free (error);
     }
 
   if (command)
