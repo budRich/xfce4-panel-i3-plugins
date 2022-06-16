@@ -8,9 +8,6 @@ a window is "*selected*" to `i3run --winid WINDOW_ID`.
 This make the plugins work much smoother with [**i3wm**].  
 For it to work you need to have [**i3ass**] installed as well.  
 
-I also identified and fixed a [bug in windowmenu], related
-to selecting things in the menu with the keyboard.  
-
 Together with the plugins, the script `xfce4-popup-i3-windowmenu`, 
 will get installed. The script can be used to bring up the menu
 without clicking the button.
