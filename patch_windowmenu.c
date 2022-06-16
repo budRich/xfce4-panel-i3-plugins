@@ -1,6 +1,14 @@
 --- xfce4-panel/plugins/windowmenu/windowmenu.c	2022-06-16 05:57:01.885190218 +0200
-+++ src/i3-windowmenu/windowmenu.c	2022-06-16 07:49:52.671927566 +0200
-@@ -931,8 +931,8 @@
++++ src/i3-windowmenu/windowmenu.c	2022-06-16 11:54:21.875410955 +0200
+@@ -131,7 +131,6 @@
+                                                              WindowMenuPlugin   *plugin);
+ 
+ 
+-
+ /* define the plugin */
+ XFCE_PANEL_DEFINE_PLUGIN_RESIDENT (WindowMenuPlugin, window_menu_plugin)
+ 
+@@ -931,8 +930,8 @@
                                                WindowMenuPlugin *plugin)
  {
    WnckWindow    *window;
@@ -10,7 +18,7 @@
  
    panel_return_val_if_fail (GTK_IS_MENU_ITEM (mi), FALSE);
    panel_return_val_if_fail (GTK_IS_MENU_SHELL (gtk_widget_get_parent (mi)), FALSE);
-@@ -944,11 +944,18 @@
+@@ -944,11 +943,18 @@
    window = g_object_get_qdata (G_OBJECT (mi), window_quark);
    if (event->button == 1)
      {
@@ -34,7 +42,7 @@
      }
    else if (event->button == 2)
      {
-@@ -968,6 +975,8 @@
+@@ -968,6 +974,8 @@
        return TRUE;
      }
  
@@ -43,3 +51,30 @@
    return FALSE;
  }
  
+@@ -1129,6 +1137,18 @@
+       fake_event.button = 3;
+       break;
+ 
++    case GDK_KEY_Tab:
++
++      g_signal_emit_by_name ( GTK_MENU (menu), "move-current", GTK_MENU_DIR_NEXT);
++
++      return TRUE;
++
++    /* ISO_LEFT_TAB is result when shift is held down */
++    case GDK_KEY_ISO_Left_Tab:
++      g_signal_emit_by_name ( GTK_MENU (menu), "move-current", GTK_MENU_DIR_PREV);
++      return TRUE;
++
++
+     default:
+       return FALSE;
+     }
+@@ -1416,6 +1436,7 @@
+   g_signal_connect (G_OBJECT (menu), "deactivate",
+       G_CALLBACK (window_menu_plugin_menu_deactivate), plugin);
+ 
++  
+   xfce_panel_plugin_popup_menu (XFCE_PANEL_PLUGIN (plugin), GTK_MENU (menu),
+                                 button, (GdkEvent *) event);
+ }
