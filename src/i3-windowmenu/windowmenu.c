@@ -933,7 +933,6 @@ window_menu_plugin_menu_window_item_activate (GtkWidget        *mi,
   WnckWindow    *window;
   GtkWidget     *menu;
   gchar         *command;
-  GError        *error;
 
   panel_return_val_if_fail (GTK_IS_MENU_ITEM (mi), FALSE);
   panel_return_val_if_fail (GTK_IS_MENU_SHELL (gtk_widget_get_parent (mi)), FALSE);
@@ -945,15 +944,14 @@ window_menu_plugin_menu_window_item_activate (GtkWidget        *mi,
   window = g_object_get_qdata (G_OBJECT (mi), window_quark);
   if (event->button == 1)
     {
-      command = g_strdup_printf ("i3run -d %ld --summon", wnck_window_get_xid (window));
+      command = g_strdup_printf ("i3run -d %ld --silent --summon", wnck_window_get_xid (window));
 
       if (!xfce_spawn_command_line (gtk_widget_get_screen (mi),
                                     command, FALSE,
-                                    FALSE, TRUE, &error))
+                                    FALSE, TRUE, NULL))
         {
-          xfce_dialog_show_error (NULL, error,
+          xfce_dialog_show_error (NULL, NULL,
                                   "Failed to execute i3run command");
-          g_error_free (error);
         }
 
         if (command)
