@@ -1,6 +1,8 @@
 I *liberated\** and modified two of the *internal* [xfce4-panel] plugins:  
   - windowmenu
-  - tasklist
+  - ~tasklist~\*
+
+*\*tastlist mod is currently broken and disabled*  
 
 The modifications made are changing the action triggered when
 a window is "*selected*" to `i3run --winid WINDOW_ID`.
