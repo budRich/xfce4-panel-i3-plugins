@@ -3,7 +3,8 @@
 	      install-windowmenu uninstall-windowmenu \
 	      prep
 
-all: build/libi3tasklist.so build/libi3windowmenu.so build/xfce4-popup-i3-windowmenu
+# build/libi3tasklist.so build/libi3windowmenu.so build/xfce4-popup-i3-windowmenu
+all: build/libi3windowmenu.so build/xfce4-popup-i3-windowmenu
 
 .ONESHELL:
 
@@ -79,8 +80,10 @@ tasklist_ui   := build/tasklist-dialog_ui.h
 windowmenu_ui := build/windowmenu-dialog_ui.h
 
 
-install:   install-windowmenu   install-tasklist
-uninstall: uninstall-windowmenu uninstall-tasklist
+# install:   install-windowmenu   install-tasklist
+# uninstall: uninstall-windowmenu uninstall-tasklist
+install:   install-windowmenu
+uninstall: uninstall-windowmenu
 
 -include $(deps)
 
