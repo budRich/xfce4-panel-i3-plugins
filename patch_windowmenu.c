@@ -1,5 +1,5 @@
 --- xfce4-panel/plugins/windowmenu/windowmenu.c	2022-06-16 05:57:01.885190218 +0200
-+++ src/i3-windowmenu/windowmenu.c	2022-06-16 11:54:21.875410955 +0200
++++ src/i3-windowmenu/windowmenu.c	2022-06-16 18:45:00.949000925 +0200
 @@ -131,7 +131,6 @@
                                                               WindowMenuPlugin   *plugin);
  
@@ -27,7 +27,7 @@
 -      if (workspace != NULL)
 -        wnck_workspace_activate (workspace, event->time - 1);
 -      wnck_window_activate (window, event->time);
-+      command = g_strdup_printf ("i3run -d %ld --silent --summon", wnck_window_get_xid (window));
++      command = g_strdup_printf ("i3run -d %ld --summon", wnck_window_get_xid (window));
 +
 +      if (!xfce_spawn_command_line (gtk_widget_get_screen (mi),
 +                                    command, FALSE,
