@@ -131,7 +131,6 @@ static void      window_menu_plugin_menu                    (GtkWidget          
                                                              WindowMenuPlugin   *plugin);
 
 
-
 /* define the plugin */
 XFCE_PANEL_DEFINE_PLUGIN_RESIDENT (WindowMenuPlugin, window_menu_plugin)
 
@@ -1138,6 +1137,18 @@ window_menu_plugin_menu_key_press_event (GtkWidget        *menu,
       fake_event.button = 3;
       break;
 
+    case GDK_KEY_Tab:
+
+      g_signal_emit_by_name ( GTK_MENU (menu), "move-current", GTK_MENU_DIR_NEXT);
+
+      return TRUE;
+
+    /* ISO_LEFT_TAB is result when shift is held down */
+    case GDK_KEY_ISO_Left_Tab:
+      g_signal_emit_by_name ( GTK_MENU (menu), "move-current", GTK_MENU_DIR_PREV);
+      return TRUE;
+
+
     default:
       return FALSE;
     }
@@ -1425,6 +1436,7 @@ window_menu_plugin_menu (GtkWidget        *button,
   g_signal_connect (G_OBJECT (menu), "deactivate",
       G_CALLBACK (window_menu_plugin_menu_deactivate), plugin);
 
+  
   xfce_panel_plugin_popup_menu (XFCE_PANEL_PLUGIN (plugin), GTK_MENU (menu),
                                 button, (GdkEvent *) event);
 }
