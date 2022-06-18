@@ -34,7 +34,7 @@
 
 #define ARROW_BUTTON_SIZE       (12)
 #define DEFAULT_ICON_LUCENCY    (50)
-#define DEFAULT_MAX_WIDTH_CHARS (24)
+#define DEFAULT_MAX_WIDTH_CHARS (75)
 #define DEFAULT_ELLIPSIZE_MODE  (PANGO_ELLIPSIZE_MIDDLE)
 #define URGENT_FLAGS            (WNCK_WINDOW_STATE_DEMANDS_ATTENTION | \
                                  WNCK_WINDOW_STATE_URGENT)
@@ -54,6 +54,7 @@ struct _WindowMenuPlugin
   /* panel widgets */
   GtkWidget          *button;
   GtkWidget          *icon;
+  GtkWidget          *title_label;
 
   /* settings */
   guint               button_style : 1;
@@ -61,6 +62,7 @@ struct _WindowMenuPlugin
   guint               workspace_names : 1;
   guint               urgentcy_notification : 1;
   guint               all_workspaces : 1;
+  guint               show_title : 1;
 
   /* urgent window counter */
   gint                urgent_windows;
@@ -78,7 +80,8 @@ enum
   PROP_WORKSPACE_ACTIONS,
   PROP_WORKSPACE_NAMES,
   PROP_URGENTCY_NOTIFICATION,
-  PROP_ALL_WORKSPACES
+  PROP_ALL_WORKSPACES,
+  PROP_SHOW_TITLE
 };
 
 enum
@@ -134,10 +137,7 @@ static void      window_menu_plugin_menu                    (GtkWidget          
 /* define the plugin */
 XFCE_PANEL_DEFINE_PLUGIN_RESIDENT (WindowMenuPlugin, window_menu_plugin)
 
-
-
 static GQuark window_quark = 0;
-
 
 
 static void
@@ -199,6 +199,13 @@ window_menu_plugin_class_init (WindowMenuPluginClass *klass)
                                                          TRUE,
                                                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class,
+                                   PROP_SHOW_TITLE,
+                                   g_param_spec_boolean ("show-title",
+                                                         NULL, NULL,
+                                                         TRUE,
+                                                         G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   gtk_widget_class_install_style_property (gtkwidget_class,
                                            g_param_spec_int ("minimized-icon-lucency",
                                                              NULL,
@@ -231,24 +238,36 @@ window_menu_plugin_class_init (WindowMenuPluginClass *klass)
 static void
 window_menu_plugin_init (WindowMenuPlugin *plugin)
 {
+  GtkWidget *box;
+
   plugin->button_style = BUTTON_STYLE_ICON;
   plugin->workspace_actions = FALSE;
   plugin->workspace_names = TRUE;
   plugin->urgentcy_notification = TRUE;
   plugin->all_workspaces = TRUE;
   plugin->urgent_windows = 0;
+  plugin->show_title = 0;
   plugin->minimized_icon_lucency = DEFAULT_ICON_LUCENCY;
   plugin->ellipsize_mode = DEFAULT_ELLIPSIZE_MODE;
   plugin->max_width_chars = DEFAULT_MAX_WIDTH_CHARS;
 
   /* create the widgets */
+  box = gtk_box_new(xfce_panel_plugin_get_orientation(XFCE_PANEL_PLUGIN (plugin)), 2);
+  gtk_container_add (GTK_CONTAINER (plugin), box);
   plugin->button = xfce_arrow_button_new (GTK_ARROW_NONE);
   xfce_panel_plugin_add_action_widget (XFCE_PANEL_PLUGIN (plugin), plugin->button);
-  gtk_container_add (GTK_CONTAINER (plugin), plugin->button);
+  gtk_box_pack_start(GTK_BOX(box), GTK_WIDGET(plugin->button), FALSE, FALSE, 2);
+
   gtk_button_set_relief (GTK_BUTTON (plugin->button), GTK_RELIEF_NONE);
   gtk_widget_set_name (plugin->button, "windowmenu-button");
   g_signal_connect (G_OBJECT (plugin->button), "toggled",
       G_CALLBACK (window_menu_plugin_menu), plugin);
+
+  plugin->title_label = gtk_label_new ("jones");
+  gtk_box_pack_start(GTK_BOX(box), GTK_WIDGET(plugin->title_label), FALSE, FALSE, 0);
+  // gtk_container_add (GTK_CONTAINER (plugin), plugin->title_label);
+  gtk_widget_show (plugin->title_label);
+  gtk_widget_show (box);
 
   plugin->icon = gtk_image_new_from_icon_name ("user-desktop", GTK_ICON_SIZE_BUTTON);
   gtk_container_add (GTK_CONTAINER (plugin->button), plugin->icon);
@@ -285,6 +304,10 @@ window_menu_plugin_get_property (GObject    *object,
 
     case PROP_ALL_WORKSPACES:
       g_value_set_boolean (value, plugin->all_workspaces);
+      break;
+
+    case PROP_SHOW_TITLE:
+      g_value_set_boolean (value, plugin->show_title);
       break;
 
     default:
@@ -339,6 +362,23 @@ window_menu_plugin_set_property (GObject      *object,
 
     case PROP_WORKSPACE_NAMES:
       plugin->workspace_names = g_value_get_boolean (value);
+      break;
+
+    case PROP_SHOW_TITLE:
+      plugin->show_title = g_value_get_boolean (value);
+
+      /* show or hide the icon */
+      if (plugin->show_title)
+        gtk_widget_show (plugin->title_label);
+      else
+        gtk_widget_hide (plugin->title_label);
+
+      /* update the plugin */
+      xfce_panel_plugin_set_small (panel_plugin, plugin->button_style == BUTTON_STYLE_ICON);
+      window_menu_plugin_size_changed (panel_plugin,
+          xfce_panel_plugin_get_size (panel_plugin));
+      window_menu_plugin_screen_position_changed (panel_plugin,
+          xfce_panel_plugin_get_screen_position (panel_plugin));
       break;
 
     case PROP_URGENTCY_NOTIFICATION:
@@ -426,6 +466,7 @@ G_GNUC_END_IGNORE_DEPRECATIONS
   g_signal_connect (G_OBJECT (plugin->screen), "active-window-changed",
       G_CALLBACK (window_menu_plugin_active_window_changed), plugin);
 
+
   if (plugin->urgentcy_notification)
      window_menu_plugin_windows_connect (plugin, FALSE);
 }
@@ -443,6 +484,7 @@ window_menu_plugin_construct (XfcePanelPlugin *panel_plugin)
     { "workspace-names", G_TYPE_BOOLEAN },
     { "urgentcy-notification", G_TYPE_BOOLEAN },
     { "all-workspaces", G_TYPE_BOOLEAN },
+    { "show-title", G_TYPE_BOOLEAN },
     { NULL }
   };
 
@@ -555,7 +597,7 @@ window_menu_plugin_configure_plugin (XfcePanelPlugin *panel_plugin)
   guint             i;
   const gchar      *names[] = { "workspace-actions", "workspace-names",
                                 "urgentcy-notification", "all-workspaces",
-                                "style" };
+                                "style", "show-title" };
 
   /* setup the dialog */
   PANEL_UTILS_LINK_4UI
@@ -620,7 +662,15 @@ window_menu_plugin_remote_event (XfcePanelPlugin *panel_plugin,
   return TRUE;
 }
 
-
+static void
+window_menu_plugin_active_name_changed (WnckWindow       *window,
+                                        WindowMenuPlugin *plugin)
+{
+  gchar *title;
+  title = g_strdup_printf ("%s", wnck_window_get_name (window));
+  gtk_label_set_markup (GTK_LABEL (plugin->title_label), title);
+  g_free(title);
+}
 
 static void
 window_menu_plugin_active_window_changed (WnckScreen       *screen,
@@ -633,6 +683,9 @@ window_menu_plugin_active_window_changed (WnckScreen       *screen,
   GtkWidget      *icon = GTK_WIDGET (plugin->icon);
   WnckWindowType  type;
 
+  gchar *title=NULL;
+
+
   panel_return_if_fail (XFCE_IS_WINDOW_MENU_PLUGIN (plugin));
   panel_return_if_fail (GTK_IMAGE (icon));
   panel_return_if_fail (WNCK_IS_SCREEN (screen));
@@ -643,8 +696,20 @@ window_menu_plugin_active_window_changed (WnckScreen       *screen,
   if (plugin->button_style == BUTTON_STYLE_ICON)
     {
       window = wnck_screen_get_active_window (screen);
+
+      g_signal_connect (G_OBJECT (window), "name-changed",
+        G_CALLBACK (window_menu_plugin_active_name_changed), plugin);
+
+      g_signal_handlers_disconnect_by_func(G_OBJECT (previous_window), 
+                                           window_menu_plugin_active_name_changed, plugin);
+
       if (G_LIKELY (window != NULL))
         {
+          
+          title = g_strdup_printf ("%s", wnck_window_get_name (window));
+          gtk_label_set_markup (GTK_LABEL (plugin->title_label), title);
+          g_free(title);
+
           /* skip 'fake' windows */
           type = wnck_window_get_window_type (window);
           if (type == WNCK_WINDOW_DESKTOP || type == WNCK_WINDOW_DOCK)
@@ -676,6 +741,8 @@ window_menu_plugin_active_window_changed (WnckScreen       *screen,
           gtk_widget_set_tooltip_text (GTK_WIDGET (icon), _("Desktop"));
         }
     }
+
+    
 }
 
 
@@ -931,7 +998,7 @@ window_menu_plugin_menu_window_item_activate (GtkWidget        *mi,
 {
   WnckWindow    *window;
   GtkWidget     *menu;
-  gchar         *command;
+  gchar         *command=NULL;
 
   panel_return_val_if_fail (GTK_IS_MENU_ITEM (mi), FALSE);
   panel_return_val_if_fail (GTK_IS_MENU_SHELL (gtk_widget_get_parent (mi)), FALSE);
@@ -943,28 +1010,34 @@ window_menu_plugin_menu_window_item_activate (GtkWidget        *mi,
   window = g_object_get_qdata (G_OBJECT (mi), window_quark);
   if (event->button == 1)
     {
-      command = g_strdup_printf ("i3run -d %ld --summon", wnck_window_get_xid (window));
+      command = g_strdup_printf ("i3run -d %ld", wnck_window_get_xid (window));
 
       if (!xfce_spawn_command_line (gtk_widget_get_screen (mi),
                                     command, FALSE,
-                                    FALSE, TRUE, NULL))
+                                    TRUE, TRUE, NULL))
         {
           xfce_dialog_show_error (NULL, NULL,
                                   "Failed to execute i3run command");
         }
-
-        if (command)
-          g_free(command);
     }
   else if (event->button == 2)
     {
       /* active the window (bring it to this workspace) */
-      wnck_window_activate (window, event->time);
+      command = g_strdup_printf ("i3run -d %ld --summon", wnck_window_get_xid (window));
+
+      if (!xfce_spawn_command_line (gtk_widget_get_screen (mi),
+                                    command, FALSE,
+                                    TRUE, TRUE, NULL))
+        {
+          xfce_dialog_show_error (NULL, NULL,
+                                  "Failed to execute i3run command");
+        }
     }
   else if (event->button == 3)
     {
       /* popup the window action menu */
       menu = wnck_action_menu_new (window);
+
       g_signal_connect (G_OBJECT (menu), "selection-done",
           G_CALLBACK (window_menu_plugin_menu_actions_selection_done),
           gtk_widget_get_parent (mi));
@@ -973,8 +1046,32 @@ window_menu_plugin_menu_window_item_activate (GtkWidget        *mi,
 
       return TRUE;
     }
+    else if (event->button == 2)
+      {
+        /* active the window (bring it to this workspace) */
+        wnck_window_activate (window, event->time);
+      }
+    /* button == 4 only true if control held while selecting with 
+       keyboard, it should have the same functionality as button ==3
+       but since we aren't sure where the mouse pointer is, we do
+       stuff differently. */
+    else if (event->button == 4)
+      {
+        /* popup the window action menu */
+        menu = wnck_action_menu_new (window);
 
-  
+        g_signal_connect (G_OBJECT (menu), "selection-done",
+            G_CALLBACK (window_menu_plugin_menu_actions_selection_done),
+            gtk_widget_get_parent (mi));
+        xfce_panel_plugin_popup_menu (XFCE_PANEL_PLUGIN (plugin), GTK_MENU (menu),
+                                      mi, (GdkEvent *) event);
+        gtk_menu_shell_select_first (GTK_MENU_SHELL (menu), TRUE );
+
+        return TRUE;
+      }
+
+  if (command)
+    g_free(command);
 
   return FALSE;
 }
@@ -1012,8 +1109,6 @@ window_menu_plugin_menu_window_item_new (WnckWindow           *window,
   /* create a decorated name for the label */
   if (wnck_window_is_shaded (window))
     name = decorated = g_strdup_printf ("=%s=", name);
-  else if (wnck_window_is_minimized (window))
-    name = decorated = g_strdup_printf ("[%s]", name);
 
   /* create the menu item */
 G_GNUC_BEGIN_IGNORE_DEPRECATIONS
@@ -1033,6 +1128,9 @@ G_GNUC_END_IGNORE_DEPRECATIONS
     label_text = g_strdup_printf ("<b><i>%s</i></b>", name);
   else if (wnck_window_or_transient_needs_attention (window))
     label_text = g_strdup_printf ("<b>%s</b>", name);
+  else
+    /* label_text always to force markup */
+    label_text = g_strdup_printf ("%s", name);
   if (label_text)
     {
       gtk_label_set_markup (GTK_LABEL (label), label_text);
@@ -1066,7 +1164,8 @@ G_GNUC_END_IGNORE_DEPRECATIONS
             }
 
           /* dimm the icon if the window is minimized */
-          if (wnck_window_is_minimized (window)
+          /* check for workspace == 0 is i3-wm scratchpad */
+          if (wnck_window_get_workspace(window) == 0
               && plugin->minimized_icon_lucency < 100)
             {
               lucent = exo_gdk_pixbuf_lucent (pixbuf, plugin->minimized_icon_lucency);
@@ -1108,7 +1207,6 @@ window_menu_plugin_menu_deactivate (GtkWidget        *menu,
 }
 
 
-
 static gboolean
 window_menu_plugin_menu_key_press_event (GtkWidget        *menu,
                                          GdkEventKey      *event,
@@ -1122,69 +1220,98 @@ window_menu_plugin_menu_key_press_event (GtkWidget        *menu,
   panel_return_val_if_fail (GTK_IS_MENU (menu), FALSE);
 
   /* construct an event */
-  switch (event->keyval)
+
+  if (event->type == GDK_KEY_RELEASE)
     {
-    case GDK_KEY_space:
-    case GDK_KEY_Return:
-    case GDK_KEY_KP_Space:
-    case GDK_KEY_KP_Enter:
-      /* active the menu item */
-      fake_event.button = 1;
-      break;
-
-    case GDK_KEY_Menu:
-      /* popup the window actions menu */
-      fake_event.button = 3;
-      break;
-
-    case GDK_KEY_Tab:
-
-      g_signal_emit_by_name ( GTK_MENU (menu), "move-current", GTK_MENU_DIR_NEXT);
-
-      return TRUE;
-
-    /* ISO_LEFT_TAB is result when shift is held down */
-    case GDK_KEY_ISO_Left_Tab:
-      g_signal_emit_by_name ( GTK_MENU (menu), "move-current", GTK_MENU_DIR_PREV);
-      return TRUE;
-
-
-    default:
-      return FALSE;
+      if (event->keyval == GDK_KEY_Alt_L || event->keyval == GDK_KEY_Meta_L )
+        fake_event.button = 1;
+      else
+        return FALSE;
     }
+  else
+    {
+      switch (event->keyval)
+        {
+        case GDK_KEY_Escape:
+          gtk_menu_shell_deactivate (GTK_MENU_SHELL (menu));
+          return FALSE;
 
-  /* popdown the menu, this will also emit the "deactivate" signal */
-  gtk_menu_shell_deactivate (GTK_MENU_SHELL (menu));
+        case GDK_KEY_space:
+        case GDK_KEY_Return:
+        case GDK_KEY_KP_Space:
+        case GDK_KEY_KP_Enter:
+          /* active the menu item */
+          fake_event.button = 1;
+          break;
 
-  /* get the active menu item leave when no item if found */
-  mi = gtk_menu_get_active (GTK_MENU (menu));
-  panel_return_val_if_fail (mi == NULL || GTK_IS_MENU_ITEM (mi), FALSE);
-  if (mi == NULL)
-    return FALSE;
+        case GDK_KEY_Menu:
+          /* popup the window actions menu */
+          fake_event.button = 4;
+          break;
 
+        case GDK_KEY_Tab:
+        case GDK_KEY_Down:
+          g_signal_emit_by_name ( GTK_MENU (menu), "move-current", GTK_MENU_DIR_NEXT);
+          return TRUE;
+
+        /* ISO_LEFT_TAB is result when shift is held down */
+        case GDK_KEY_ISO_Left_Tab:
+        case GDK_KEY_Up:
+          g_signal_emit_by_name ( GTK_MENU (menu), "move-current", GTK_MENU_DIR_PREV);
+          return TRUE;
+
+
+        default:
+          return FALSE;
+        }
+    }
+    
+
+    g_printerr ("BBBB %d\n",fake_event.button);
   if (fake_event.button == 1)
     {
       /* get the modifiers */
       modifiers = event->state & gtk_accelerator_get_default_mod_mask ();
 
-      if (modifiers == GDK_SHIFT_MASK)
+      if (event->state & GDK_SHIFT_MASK)
         fake_event.button = 2;
-      else if (modifiers == GDK_CONTROL_MASK)
-        fake_event.button = 3;
+      else if (modifiers & GDK_CONTROL_MASK)
+        fake_event.button = 4;
     }
+
+  
+  
+  /* popdown the menu, this will also emit the "deactivate" signal */
+  if (fake_event.button != 4)
+    gtk_menu_shell_deactivate (GTK_MENU_SHELL (menu));
+
+  /* get the active menu item leave when no item if found */
+  if (fake_event.button == 4)
+    mi = gtk_menu_shell_get_selected_item (GTK_MENU_SHELL (menu));
+  else
+    mi = gtk_menu_get_active (GTK_MENU (menu));
+
+  panel_return_val_if_fail (mi == NULL || GTK_IS_MENU_ITEM (mi), FALSE);
+  if (mi == NULL)
+    return FALSE;
 
   /* complete the event */
   fake_event.type = GDK_BUTTON_RELEASE;
   fake_event.time = event->time;
+  fake_event.window = event->window;
+  fake_event.state = 0;
 
   /* try the get the window and active an item */
   window = g_object_get_qdata (G_OBJECT (mi), window_quark);
   if (window != NULL)
+  {
+    g_printerr ("BBBB %d\n",fake_event.button);
     window_menu_plugin_menu_window_item_activate (mi, &fake_event, plugin);
+  }
   else
     gtk_menu_item_activate (GTK_MENU_ITEM (mi));
 
-  return FALSE;
+  return (event->type == GDK_KEY_RELEASE || fake_event.button == 4);
 }
 
 
@@ -1198,6 +1325,8 @@ window_menu_plugin_menu_new (WindowMenuPlugin *plugin)
   WnckWorkspace        *workspace = NULL;
   WnckWorkspace        *active_workspace, *window_workspace;
   WnckWindow           *window;
+  WnckWindow           *last_active;
+  WnckWindow           *active;
   PangoFontDescription *italic, *bold;
   gint                  urgent_windows = 0;
   gboolean              is_empty = TRUE;
@@ -1219,9 +1348,15 @@ window_menu_plugin_menu_new (WindowMenuPlugin *plugin)
   g_signal_connect (G_OBJECT (menu), "key-press-event",
       G_CALLBACK (window_menu_plugin_menu_key_press_event), plugin);
 
+  g_signal_connect (G_OBJECT (menu), "key-release-event",
+      G_CALLBACK (window_menu_plugin_menu_key_press_event), plugin);
+
   /* get all the windows and the active workspace */
   windows = wnck_screen_get_windows_stacked (plugin->screen);
   active_workspace = wnck_screen_get_active_workspace (plugin->screen);
+
+  last_active = wnck_screen_get_previously_active_window(plugin->screen);
+  active = wnck_screen_get_active_window(plugin->screen);
 
   if (plugin->all_workspaces)
     {
@@ -1236,11 +1371,36 @@ window_menu_plugin_menu_new (WindowMenuPlugin *plugin)
       workspaces = &fake;
     }
 
+  if (last_active && 
+      ( !(wnck_window_is_skip_pager (last_active)
+       || wnck_window_is_skip_tasklist (last_active) )
+      ) )
+    {
+      mi = window_menu_plugin_menu_window_item_new (last_active, plugin, italic, bold, w, h);
+              gtk_menu_shell_append (GTK_MENU_SHELL (menu), mi);
+              gtk_widget_show (mi);
+    }
+
+  if (active && 
+      ( !(wnck_window_is_skip_pager (active)
+       || wnck_window_is_skip_tasklist (active) )
+      ) )
+    {
+      mi = window_menu_plugin_menu_window_item_new (active, plugin, italic, bold, w, h);
+              gtk_menu_shell_append (GTK_MENU_SHELL (menu), mi);
+              gtk_widget_show (mi);
+    }
+
+  mi = gtk_separator_menu_item_new ();
+  gtk_menu_shell_append (GTK_MENU_SHELL (menu), mi);
+  gtk_widget_show (mi);
+  
+
   for (lp = workspaces; lp != NULL; lp = lp->next, n_workspaces++)
     {
       workspace = WNCK_WORKSPACE (lp->data);
 
-      if (plugin->workspace_names)
+      if ( plugin->workspace_names )
         {
           /* create the workspace menu item */
           mi = window_menu_plugin_menu_workspace_item_new (workspace, plugin,
@@ -1272,9 +1432,13 @@ window_menu_plugin_menu_new (WindowMenuPlugin *plugin)
             continue;
 
           /* create the menu item */
-          mi = window_menu_plugin_menu_window_item_new (window, plugin, italic, bold, w, h);
-          gtk_menu_shell_append (GTK_MENU_SHELL (menu), mi);
-          gtk_widget_show (mi);
+          if (last_active != window && active != window)
+          {
+            mi = window_menu_plugin_menu_window_item_new (window, plugin, italic, bold, w, h);
+            gtk_menu_shell_append (GTK_MENU_SHELL (menu), mi);
+            gtk_widget_show (mi);
+          }
+          
 
           /* menu is not empty anymore */
           is_empty = FALSE;
@@ -1422,6 +1586,8 @@ window_menu_plugin_menu (GtkWidget        *button,
       && !gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (button)))
     return;
 
+  menu = window_menu_plugin_menu_new (plugin);
+
   /* Panel plugin remote events don't send actual GdkEvents, so construct a minimal one so that
    * gtk_menu_popup_at_pointer/rect can extract a location correctly from a GdkWindow */
   if (gtk_get_current_event () == NULL)
@@ -1429,14 +1595,16 @@ window_menu_plugin_menu (GtkWidget        *button,
       event = g_slice_new0 (GdkEventButton);
       event->type = GDK_BUTTON_PRESS;
       event->window = gdk_get_default_root_window ();
+
+      g_signal_emit_by_name ( GTK_MENU (menu), "move-current", GTK_MENU_DIR_NEXT);
     }
 
   /* popup the menu */
-  menu = window_menu_plugin_menu_new (plugin);
   g_signal_connect (G_OBJECT (menu), "deactivate",
       G_CALLBACK (window_menu_plugin_menu_deactivate), plugin);
 
   
   xfce_panel_plugin_popup_menu (XFCE_PANEL_PLUGIN (plugin), GTK_MENU (menu),
                                 button, (GdkEvent *) event);
+
 }
