@@ -40,3 +40,9 @@ ALL_CPPFLAGS += -DHAVE_STRING_H
 
 ALL_CFLAGS =  \
   $(INCS) $(DEPS_CFLAGS) $(CFLAGS)  -MMD $(ALL_CPPFLAGS)
+
+.PHONY: ccls
+
+ccls:
+	>.$@ printf '%s\n' \
+	 clang $(INCS) $(DEPS_CFLAGS) $(ALL_CPPFLAGS) $(ALL_LDFLAGS)
