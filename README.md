@@ -18,6 +18,21 @@ without clicking the button.
 bindsym Mod1+Tab exec --no-startup-id xfce4-popup-i3-windowmenu
 ```
 
+I also made it possible to navigate the menu with the <key>Tab</key> key.
+And releasing <key>L_Alt</key> can be used to select an item.
+
+I also fixed an old issue that prevented the ability
+to hold shift key when selecting a menu item, this will
+always bring windows to the current workspace.
+You can also hold <key>Ctrl</key> when selecting to
+bring up the context menu.
+
+I added an option to show the **name** (same as title_format) next
+to the icon. 
+
+I made it so that the currently focused and the last focused window
+is always at the top of the list.
+
 To not mess up the xfce4-panel package installed 
 by package managers, the plugins are renamed and 
 will not overwrite the original internal ones.

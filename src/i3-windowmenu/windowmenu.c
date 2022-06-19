@@ -22,7 +22,6 @@
 
 #include <exo/exo.h>
 #include <libxfce4ui/libxfce4ui.h>
-#include <libxfce4panel/libxfce4panel.h>
 #include <libwnck/libwnck.h>
 #include <common/panel-xfconf.h>
 #include <common/panel-utils.h>
@@ -677,14 +676,11 @@ window_menu_plugin_active_window_changed (WnckScreen       *screen,
                                           WnckWindow       *previous_window,
                                           WindowMenuPlugin *plugin)
 {
-  WnckWindow     *window;
+  WnckWindow     *window=NULL;
   GdkPixbuf      *pixbuf;
   gint            icon_size;
   GtkWidget      *icon = GTK_WIDGET (plugin->icon);
   WnckWindowType  type;
-
-  gchar *title=NULL;
-
 
   panel_return_if_fail (XFCE_IS_WINDOW_MENU_PLUGIN (plugin));
   panel_return_if_fail (GTK_IMAGE (icon));
@@ -692,24 +688,30 @@ window_menu_plugin_active_window_changed (WnckScreen       *screen,
   panel_return_if_fail (plugin->screen == screen);
 
   icon_size = xfce_panel_plugin_get_icon_size (XFCE_PANEL_PLUGIN (plugin));
-  /* only do this when the icon is visible */
-  if (plugin->button_style == BUTTON_STYLE_ICON)
+  
+  if (plugin->show_title)
     {
       window = wnck_screen_get_active_window (screen);
-
-      g_signal_connect (G_OBJECT (window), "name-changed",
-        G_CALLBACK (window_menu_plugin_active_name_changed), plugin);
 
       g_signal_handlers_disconnect_by_func(G_OBJECT (previous_window), 
                                            window_menu_plugin_active_name_changed, plugin);
 
       if (G_LIKELY (window != NULL))
         {
-          
-          title = g_strdup_printf ("%s", wnck_window_get_name (window));
-          gtk_label_set_markup (GTK_LABEL (plugin->title_label), title);
-          g_free(title);
+          window_menu_plugin_active_name_changed (window, plugin);
+          g_signal_connect (G_OBJECT (window), "name-changed",
+            G_CALLBACK (window_menu_plugin_active_name_changed), plugin);
+        }
+    }
+  /* only do this when the icon is visible */
+  if (plugin->button_style == BUTTON_STYLE_ICON)
+    {
 
+      if (window == NULL)
+        window = wnck_screen_get_active_window (screen);
+
+      if (G_LIKELY (window != NULL))
+        {
           /* skip 'fake' windows */
           type = wnck_window_get_window_type (window);
           if (type == WNCK_WINDOW_DESKTOP || type == WNCK_WINDOW_DOCK)
@@ -1008,72 +1010,44 @@ window_menu_plugin_menu_window_item_activate (GtkWidget        *mi,
     return FALSE;
 
   window = g_object_get_qdata (G_OBJECT (mi), window_quark);
-  if (event->button == 1)
-    {
-      command = g_strdup_printf ("i3run -d %ld", wnck_window_get_xid (window));
 
+  switch (event->button)
+    {
+    case 1: /* leftbutton focus or hide window */
+    case 2: /* middlebutton || Shift modifier --summon window */
+      
+      command = g_strdup_printf ("i3run -d %ld %s",
+                                 wnck_window_get_xid (window),
+                                 (event->button == 2 ? "--summon" : ""));
+      
       if (!xfce_spawn_command_line (gtk_widget_get_screen (mi),
                                     command, FALSE,
                                     TRUE, TRUE, NULL))
         {
-          xfce_dialog_show_error (NULL, NULL,
-                                  "Failed to execute i3run command");
+          xfce_dialog_show_error (NULL, NULL, "Failed to execute i3run command");
         }
-    }
-  else if (event->button == 2)
-    {
-      /* active the window (bring it to this workspace) */
-      command = g_strdup_printf ("i3run -d %ld --summon", wnck_window_get_xid (window));
 
-      if (!xfce_spawn_command_line (gtk_widget_get_screen (mi),
-                                    command, FALSE,
-                                    TRUE, TRUE, NULL))
-        {
-          xfce_dialog_show_error (NULL, NULL,
-                                  "Failed to execute i3run command");
-        }
-    }
-  else if (event->button == 3)
-    {
-      /* popup the window action menu */
+      g_free(command);
+      return TRUE;
+    case 3:  /* fallthrough */
+    case 4:  /* button-4 is sent as a fakebutton when Control is held 
+              * while selecting with keyboard */
       menu = wnck_action_menu_new (window);
 
       g_signal_connect (G_OBJECT (menu), "selection-done",
           G_CALLBACK (window_menu_plugin_menu_actions_selection_done),
           gtk_widget_get_parent (mi));
-      xfce_panel_plugin_popup_menu (XFCE_PANEL_PLUGIN (plugin), GTK_MENU (menu),
-                                    NULL, (GdkEvent *) event);
-
-      return TRUE;
-    }
-    else if (event->button == 2)
-      {
-        /* active the window (bring it to this workspace) */
-        wnck_window_activate (window, event->time);
-      }
-    /* button == 4 only true if control held while selecting with 
-       keyboard, it should have the same functionality as button ==3
-       but since we aren't sure where the mouse pointer is, we do
-       stuff differently. */
-    else if (event->button == 4)
-      {
-        /* popup the window action menu */
-        menu = wnck_action_menu_new (window);
-
-        g_signal_connect (G_OBJECT (menu), "selection-done",
-            G_CALLBACK (window_menu_plugin_menu_actions_selection_done),
-            gtk_widget_get_parent (mi));
-        xfce_panel_plugin_popup_menu (XFCE_PANEL_PLUGIN (plugin), GTK_MENU (menu),
-                                      mi, (GdkEvent *) event);
+      xfce_panel_plugin_popup_menu (XFCE_PANEL_PLUGIN (plugin),
+                                    GTK_MENU (menu),
+                                    (event->button == 4 ? mi : NULL),
+                                    (GdkEvent *) event);
+      if (event->button == 4)
         gtk_menu_shell_select_first (GTK_MENU_SHELL (menu), TRUE );
 
-        return TRUE;
-      }
-
-  if (command)
-    g_free(command);
-
-  return FALSE;
+      return TRUE;
+    default:
+      return FALSE;
+    }
 }
 
 
@@ -1266,8 +1240,6 @@ window_menu_plugin_menu_key_press_event (GtkWidget        *menu,
         }
     }
     
-
-    g_printerr ("BBBB %d\n",fake_event.button);
   if (fake_event.button == 1)
     {
       /* get the modifiers */
@@ -1305,7 +1277,6 @@ window_menu_plugin_menu_key_press_event (GtkWidget        *menu,
   window = g_object_get_qdata (G_OBJECT (mi), window_quark);
   if (window != NULL)
   {
-    g_printerr ("BBBB %d\n",fake_event.button);
     window_menu_plugin_menu_window_item_activate (mi, &fake_event, plugin);
   }
   else

@@ -20,6 +20,7 @@
 #define __XFCE_WINDOW_MENU_PLUGIN_H__
 
 #include <gtk/gtk.h>
+#include <libxfce4panel/libxfce4panel.h>
 
 G_BEGIN_DECLS
 
