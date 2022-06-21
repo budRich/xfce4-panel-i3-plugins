@@ -262,7 +262,7 @@ window_menu_plugin_init (WindowMenuPlugin *plugin)
   g_signal_connect (G_OBJECT (plugin->button), "toggled",
       G_CALLBACK (window_menu_plugin_menu), plugin);
 
-  plugin->title_label = gtk_label_new ("jones");
+  plugin->title_label = gtk_label_new ("");
   gtk_box_pack_start(GTK_BOX(box), GTK_WIDGET(plugin->title_label), FALSE, FALSE, 0);
   // gtk_container_add (GTK_CONTAINER (plugin), plugin->title_label);
   gtk_widget_show (plugin->title_label);
@@ -1022,13 +1022,13 @@ window_menu_plugin_menu_window_item_activate (GtkWidget        *mi,
       
       if (!xfce_spawn_command_line (gtk_widget_get_screen (mi),
                                     command, FALSE,
-                                    TRUE, TRUE, NULL))
+                                    FALSE, TRUE, NULL))
         {
           xfce_dialog_show_error (NULL, NULL, "Failed to execute i3run command");
         }
 
       g_free(command);
-      return TRUE;
+      return FALSE;
     case 3:  /* fallthrough */
     case 4:  /* button-4 is sent as a fakebutton when Control is held 
               * while selecting with keyboard */
