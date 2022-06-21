@@ -38,6 +38,15 @@ GType window_menu_plugin_get_type      (void) G_GNUC_CONST;
 
 void  window_menu_plugin_register_type (XfcePanelTypeModule *type_module);
 
+#if (!LIBXFCE4PANEL_CHECK_VERSION(4,17,2))
+void                  xfce_panel_plugin_popup_menu          (XfcePanelPlugin   *plugin,
+                                                             GtkMenu           *menu,
+                                                             GtkWidget         *widget,
+                                                             const GdkEvent    *trigger_event);
+
+#endif
+
+
 G_END_DECLS
 
 #endif /* !__XFCE_WINDOW_MENU_PLUGIN_H__ */
