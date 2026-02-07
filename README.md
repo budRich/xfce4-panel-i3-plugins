@@ -1,3 +1,5 @@
+# MAINTAINED AT https://git.budlabs.xyz/bud/xfce4-panel-i3-plugins
+
 I *liberated\** and modified two of the *internal* [xfce4-panel] plugins:  
   - windowmenu
   - ~tasklist~\*
